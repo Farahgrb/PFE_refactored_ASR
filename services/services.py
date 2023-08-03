@@ -5,7 +5,9 @@ import torchaudio
 from speechbrain.pretrained import WhisperASR
 from dotenv import dotenv_values
 import arabic_reshaper
-
+from fastapi import  UploadFile
+import os
+import uuid
 
 env_vars = dotenv_values()
 
@@ -55,18 +57,21 @@ def segment_audio(audio_data, segment_duration):
         segments.append(transcription)
 
     return segments
+def save_uploaded_file(wav: UploadFile):
+    # Generate a unique filename to avoid conflicts
+    filename = f"uploaded.wav"
+    file_path = os.path.join(env_vars["UPLOAD_FOLDER"], filename)
+    with open(file_path, "wb") as f:
+        f.write(wav.file.read())
+    return file_path
 
-def transcribe(wav):
-    
+def transcribe(wav: UploadFile):
     transcriptions = []
-    
+    # Save the uploaded audio file to a temporary location
+    audio_path = save_uploaded_file(wav)
     # Split the audio into chunks
-    transcriptions = segment_audio(wav.file, env_vars["CHUNK_DURATION"])
-
+    transcriptions = segment_audio(audio_path, int(env_vars["CHUNK_DURATION"]))
     complete_transcription = " ".join(transcriptions)
-
     reshaped_text = arabic_reshaper.reshape(complete_transcription)
     print(reshaped_text)
-
     return { 'Transcription': complete_transcription }
-
